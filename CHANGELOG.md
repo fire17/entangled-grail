@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.2 — 2026-07-10
+- ⚡ AUTO-TRIO: open ONE window (`?auto=trio`) and it self-spawns its two siblings,
+  pre-positioned left/right. Popup-blocked first run degrades to a single click
+  ("click anywhere to summon"); with popups allowed it's fully automatic.
+
 ## v0.1.1 — 2026-07-10
 - TRIO support: third entity via a third window with its own iteration (the artwork's
   unpaired-instance channel — up to 10 extra entities). Launcher: "🔺 TRIO" preset

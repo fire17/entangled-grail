@@ -33,6 +33,7 @@
 		video palette: iter 253 = green/red · iter 58 = red/green (scheme #43, dark bg)</div>
 		<button class="gold" onclick="pair('versions/v0-live/', ['fxchain=ETHEREUM&noshuffle=1&fxiteration=253', 'fxchain=TEZOS&noshuffle=1&fxiteration=58'])">🎬 VIDEO COLORS (green/red + red/green)</button>
 		<button class="gold" onclick="trio('versions/v0-live/', ['fxchain=ETHEREUM&noshuffle=1&fxiteration=253', 'fxchain=TEZOS&noshuffle=1&fxiteration=58', 'fxchain=ETHEREUM&noshuffle=1&fxiteration=41'])">🔺 TRIO (+ blue third entity)</button>
+		<button class="gold" onclick="one('versions/v0-live/?fxchain=ETHEREUM&fxiteration=253&noshuffle=1&auto=trio')">⚡ AUTO-TRIO (one window self-spawns siblings)</button>
 		<br>
 		<label>iteration</label><input type="number" id="iter" min="1" max="256" value="253">
 		<button class="gold" onclick="pair('versions/v0-live/', ['fxchain=TEZOS&noshuffle=1&fxiteration='+iter(), 'fxchain=ETHEREUM&noshuffle=1&fxiteration='+iter()])">open PAIR (tezos + ethereum)</button>

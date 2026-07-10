@@ -64,6 +64,32 @@
 		label.textContent = liveIter + '*'; // * = skin preview, not the true iteration
 	}
 
+	// --- auto-trio: leader window spawns its two siblings ---
+	if (params.get('auto') === 'trio' && !params.get('spawned')) {
+		const sibs = ['fxchain=TEZOS&fxiteration=58', 'fxchain=ETHEREUM&fxiteration=41'];
+		const spawnSibs = () => {
+			const w = window.innerWidth, h = window.innerHeight, y = window.screenY;
+			let ok = true;
+			sibs.forEach((q, i) => {
+				const x = window.screenX + (i === 0 ? -(w + 25) : (w + 25));
+				const win = window.open('./?' + q + '&noshuffle=1&spawned=1', '_blank',
+					`popup=yes,width=${w},height=${h},left=${Math.max(0, x)},top=${y}`);
+				if (!win) ok = false;
+			});
+			return ok;
+		};
+		window.addEventListener('DOMContentLoaded', () => {
+			if (spawnSibs()) return;
+			// popup-blocked: one gesture summons both
+			const o = document.createElement('div');
+			o.textContent = '🖱 click anywhere to summon the 2 sibling windows (allow popups on localhost for full automagic)';
+			o.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;' +
+				'z-index:10000;color:#fff;font:16px "Courier New",monospace;background:rgba(0,0,0,.55);cursor:pointer;text-align:center;padding:20px';
+			o.onclick = () => { spawnSibs(); o.remove(); };
+			document.body.appendChild(o);
+		});
+	}
+
 	// --- overlay ---
 	const ui = document.createElement('div');
 	ui.style.cssText = 'position:fixed;bottom:14px;left:14px;z-index:9999;display:flex;gap:6px;align-items:center;' +
