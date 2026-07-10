@@ -1,0 +1,8 @@
+<!DOCTYPE html>
+<!-- ponytail: headless test helper — seeds a fake second window so the tether renders in one instance -->
+<script>
+	localStorage.clear();
+	localStorage.setItem("windows", JSON.stringify([{id: 99, shape: {x: 1100, y: 250, w: 900, h: 700}, metaData: {}}]));
+	localStorage.setItem("count", "99");
+	location.replace("./index.html");
+</script>

@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entangled - ore.codes</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #000000;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      display: block;
+    }
+    .status {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      color: #00ff88;
+      font-size: 12px;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #00ff88;
+    }
+    button {
+      background: #00ff88;
+      color: black;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+<div class="status">
+  <div>Window ID: <span id="windowId">-</span></div>
+  <div>Connected Windows: <span id="connectedCount">0</span></div>
+  <div>Entanglement: <span id="entanglementStatus">None</span></div>
+  <button onclick="openNewWindow()">Open Entangled Window</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+  let scene, camera, renderer, particles, geometry, material;
+  let streamLines, streamParticles;
+  let time = 0;
+  let windowId;
+  let entangledWindows = new Map();
+  let channel;
+
+  let config = {
+    particleCount: 5000,
+    sphereRadius: 1.8,
+    streamStrength: 2.5
+  };
+
+  let globalColorAssigner = {
+    assignedColors: new Map(),
+    usedIndices: new Set(),
+    colors: [
+      { r: 0.2, g: 0.8, b: 0.3 }, // Green
+      { r: 0.8, g: 0.2, b: 0.3 }, // Red
+      { r: 0.3, g: 0.4, b: 0.9 }, // Blue
+      { r: 0.9, g: 0.7, b: 0.2 }, // Yellow
+      { r: 0.8, g: 0.3, b: 0.8 }, // Magenta
+      { r: 0.2, g: 0.9, b: 0.8 }, // Cyan
+      { r: 0.9, g: 0.5, b: 0.2 }, // Orange
+      { r: 0.6, g: 0.3, b: 0.9 }  // Purple
+    ],
+
+    removeColor: function(windowId) {
+      const colorIndex = this.assignedColors.get(windowId);
+      if (colorIndex !== undefined) {
+        this.usedIndices.delete(colorIndex);
+        this.assignedColors.delete(windowId);
+      }
+    }
+  };
+
+  function generateOrbColor() {
+    const allWindows = [
+      { id: windowId, timestamp: windowData.timestamp },
+      ...Array.from(entangledWindows.values())
+    ].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+    const ourIndex = allWindows.findIndex(w => w.id === windowId);
+    const colorIndex = ourIndex % globalColorAssigner.colors.length;
+
+    windowData.colorIndex = colorIndex;
+
+    return globalColorAssigner.colors[colorIndex];
+  }
+
+  let windowData = {
+    id: null,
+    position: { x: window.screenX, y: window.screenY },
+    size: { width: window.innerWidth, height: window.innerHeight },
+    orbPosition: { x: 0, y: 0, z: 0 },
+    particles: [],
+    color: null,
+    colorIndex: null,
+    timestamp: Date.now()
+  };
+
+  function init() {
+    windowId = 'orb_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
+    windowData.id = windowId;
+    windowData.color = generateOrbColor();
+    document.getElementById('windowId').textContent = windowId.slice(-8);
+
+    setupCommunication();
+
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x000000, 1);
+    document.body.appendChild(renderer.domElement);
+
+    camera.position.set(0, 0, 6);
+
+    createParticleSphere();
+    createStreamSystem();
+    setupWindowTracking();
+
+    animate();
+
+    window.addEventListener('resize', onWindowResize);
+    window.addEventListener('beforeunload', onWindowClose);
+    window.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('blur', onWindowMinimize);
+  }
+
+  function setupCommunication() {
+    try {
+      channel = new BroadcastChannel('entangled_orbs_v11');
+
+      channel.addEventListener('message', (event) => {
+        const { type, data } = event.data;
+
+        switch(type) {
+          case 'window_announce':
+            if (data.id !== windowId) {
+              entangledWindows.set(data.id, data);
+              checkAndReassignColor();
+              updateConnectionStatus();
+              broadcastWindowData('window_ack');
+            }
+            break;
+          case 'window_ack':
+            if (data.id !== windowId) {
+              entangledWindows.set(data.id, data);
+              checkAndReassignColor();
+              updateConnectionStatus();
+            }
+            break;
+          case 'window_update':
+            if (data.id !== windowId) {
+              entangledWindows.set(data.id, data);
+            }
+            break;
+          case 'window_close':
+            entangledWindows.delete(data.id);
+            updateConnectionStatus();
+            break;
+          case 'window_detangle':
+            entangledWindows.delete(data.id);
+            updateConnectionStatus();
+            break;
+        }
+      });
+
+      setTimeout(() => {
+        broadcastWindowData('window_announce');
+      }, 500);
+
+      setInterval(() => {
+        updateWindowPosition();
+        broadcastWindowData('window_update');
+      }, 200);
+
+    } catch (error) {
+      console.error('BroadcastChannel not supported:', error);
+      document.getElementById('entanglementStatus').textContent = 'Not Supported';
+    }
+  }
+
+  function checkAndReassignColor() {
+    const allWindows = [
+      { id: windowId, timestamp: windowData.timestamp, colorIndex: windowData.colorIndex },
+      ...Array.from(entangledWindows.values())
+    ].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+    const ourIndex = allWindows.findIndex(w => w.id === windowId);
+    const correctColorIndex = ourIndex % globalColorAssigner.colors.length;
+
+    if (windowData.colorIndex !== correctColorIndex) {
+      windowData.colorIndex = correctColorIndex;
+      windowData.color = globalColorAssigner.colors[correctColorIndex];
+      createParticleSphere();
+    }
+  }
+
+  function updateWindowPosition() {
+    windowData.position.x = window.screenX || 0;
+    windowData.position.y = window.screenY || 0;
+    windowData.size.width = window.innerWidth;
+    windowData.size.height = window.innerHeight;
+  }
+
+  function getWindowZIndex() {
+    return document.hasFocus() ? Date.now() : windowData.timestamp || Date.now();
+  }
+
+  function broadcastWindowData(type) {
+    if (!channel) return;
+
+    updateWindowPosition();
+
+    try {
+      channel.postMessage({
+        type: type,
+        data: {
+          id: windowId,
+          position: { ...windowData.position },
+          size: { ...windowData.size },
+          color: windowData.color,
+          colorIndex: windowData.colorIndex,
+          zIndex: getWindowZIndex(),
+          timestamp: windowData.timestamp
+        }
+      });
+    } catch (error) {
+      console.error('Failed to broadcast:', error);
+    }
+  }
+
+  function updateConnectionStatus() {
+    const previousCount = document.getElementById('connectedCount').textContent;
+    const newCount = entangledWindows.size;
+
+    document.getElementById('connectedCount').textContent = newCount.toString();
+    document.getElementById('entanglementStatus').textContent =
+            newCount > 0 ? 'Active' : 'None';
+
+    if (previousCount != newCount) {
+      createParticleSphere();
+    }
+  }
+
+  function createParticleSphere() {
+    if (particles) {
+      scene.remove(particles);
+      geometry.dispose();
+      material.dispose();
+    }
+
+    geometry = new THREE.BufferGeometry();
+
+    const positions = new Float32Array(config.particleCount * 3);
+    const colors = new Float32Array(config.particleCount * 3);
+    const sizes = new Float32Array(config.particleCount);
+    const originalPositions = new Float32Array(config.particleCount * 3);
+
+    const allColors = [windowData.color];
+    entangledWindows.forEach(window => {
+      if (window.color) {
+        allColors.push(window.color);
+      }
+    });
+
+    const nucleusParticles = Math.floor(config.particleCount * 0.5);
+    const atmosphereParticles = config.particleCount - nucleusParticles;
+
+    for (let i = 0; i < config.particleCount; i++) {
+      const i3 = i * 3;
+      let radius, density;
+
+      if (i < nucleusParticles) {
+        const nucleusRadius = config.sphereRadius * 0.4;
+        radius = nucleusRadius * Math.pow(Math.random(), 0.3);
+        density = 1.0;
+      } else {
+        const innerBoundary = config.sphereRadius * 0.6;
+        const outerBoundary = config.sphereRadius * 1.1;
+        radius = innerBoundary + (outerBoundary - innerBoundary) * Math.pow(Math.random(), 0.5);
+        density = 0.7;
+      }
+
+      let phi = Math.random() * Math.PI * 2;
+      let theta = Math.acos(2 * Math.random() - 1);
+
+      const x = radius * Math.sin(theta) * Math.cos(phi);
+      const y = radius * Math.sin(theta) * Math.sin(phi);
+      const z = radius * Math.cos(theta);
+
+      positions[i3] = originalPositions[i3] = x;
+      positions[i3 + 1] = originalPositions[i3 + 1] = y;
+      positions[i3 + 2] = originalPositions[i3 + 2] = z;
+
+      let particleColor;
+      if (i < nucleusParticles && allColors.length > 1) {
+        particleColor = allColors[Math.floor(Math.random() * allColors.length)];
+      } else {
+        particleColor = windowData.color;
+      }
+
+      const normalizedRadius = radius / (config.sphereRadius * 1.1);
+      const intensity = density * (0.5 + normalizedRadius * 0.5);
+
+      colors[i3] = particleColor.r * intensity;
+      colors[i3 + 1] = particleColor.g * intensity;
+      colors[i3 + 2] = particleColor.b * intensity;
+
+      sizes[i] = density * (0.7 + Math.random() * 0.3) * (0.9 + normalizedRadius * 0.3);
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+    geometry.setAttribute('originalPosition', new THREE.BufferAttribute(originalPositions, 3));
+
+    windowData.particles = Array.from(positions);
+
+    material = new THREE.PointsMaterial({
+      size: 0.03,
+      sizeAttenuation: true,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending
+    });
+
+    particles = new THREE.Points(geometry, material);
+    scene.add(particles);
+  }
+
+  function createStreamSystem() {
+    streamLines = new THREE.Group();
+    scene.add(streamLines);
+    streamParticles = new Map();
+  }
+
+  function updateStreams() {
+    streamLines.clear();
+
+    if (entangledWindows.size === 0) return;
+
+    entangledWindows.forEach((otherWindow, otherId) => {
+      const relativePos = calculateRelativePosition(otherWindow);
+
+      if (relativePos && config.streamStrength > 0) {
+        createParticleStreamToWindow(relativePos, otherId);
+      }
+    });
+  }
+
+  function calculateStreamClipping(streamDirection, maxReach) {
+    let clippedReach = maxReach;
+
+    const overlappingWindows = calculateTransparentContent();
+
+    overlappingWindows.forEach(otherWindow => {
+      const offsetX = otherWindow.position.x - windowData.position.x;
+      const offsetY = otherWindow.position.y - windowData.position.y;
+      const worldOffset = screenToWorldOffset(offsetX, offsetY);
+
+      const orbDistance = Math.sqrt(
+              worldOffset.x * worldOffset.x +
+              worldOffset.y * worldOffset.y +
+              worldOffset.z * worldOffset.z
+      );
+
+      const directionToOrb = {
+        x: worldOffset.x / orbDistance,
+        y: worldOffset.y / orbDistance,
+        z: worldOffset.z / orbDistance
+      };
+
+      const dotProduct = streamDirection.x * directionToOrb.x +
+              streamDirection.y * directionToOrb.y +
+              streamDirection.z * directionToOrb.z;
+
+      if (dotProduct > 0.5) {
+        const orbSurfaceDistance = orbDistance - config.sphereRadius * 1.1;
+        if (orbSurfaceDistance > 0 && orbSurfaceDistance < clippedReach) {
+          clippedReach = orbSurfaceDistance;
+        }
+      }
+    });
+
+    return clippedReach;
+  }
+
+  function createParticleStreamToWindow(targetPos, targetId) {
+    if (config.streamStrength <= 0) return;
+
+    const streamDirection = new THREE.Vector3(targetPos.x, targetPos.y, targetPos.z).normalize();
+
+    const aspect = window.innerWidth / window.innerHeight;
+    const maxReach = Math.max(8 * aspect, 8);
+    const clippedReach = calculateStreamClipping(streamDirection, maxReach);
+
+    const minimumReach = config.sphereRadius * 0.5;
+    if (clippedReach < minimumReach) {
+      return;
+    }
+
+    const particleCount = Math.floor(2000 * config.streamStrength);
+    if (particleCount < 150) return;
+
+    const allColors = [windowData.color];
+    entangledWindows.forEach(window => {
+      if (window.color) {
+        allColors.push(window.color);
+      }
+    });
+
+    const streamGeometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+    const sizes = new Float32Array(particleCount);
+
+    const perpendicular1 = new THREE.Vector3();
+    const perpendicular2 = new THREE.Vector3();
+
+    if (Math.abs(streamDirection.x) < 0.9) {
+      perpendicular1.set(1, 0, 0);
+    } else {
+      perpendicular1.set(0, 1, 0);
+    }
+    perpendicular2.crossVectors(streamDirection, perpendicular1).normalize();
+    perpendicular1.crossVectors(perpendicular2, streamDirection).normalize();
+
+    for (let i = 0; i < particleCount; i++) {
+      const i3 = i * 3;
+
+      const streamProgress = Math.random();
+
+      const maxWidth = config.sphereRadius * 0.6;
+      const minWidth = config.sphereRadius * 0.1;
+      const tapering = Math.pow(1 - streamProgress, 2.5);
+      const streamWidth = minWidth + (maxWidth - minWidth) * tapering;
+
+      const angle = Math.random() * Math.PI * 2;
+      const radius = Math.pow(Math.random(), 0.8) * streamWidth;
+
+      const streamDistance = config.sphereRadius * 0.95 + streamProgress * clippedReach;
+      const basePos = streamDirection.clone().multiplyScalar(streamDistance);
+
+      const widthOffset = perpendicular1.clone().multiplyScalar(Math.cos(angle) * radius)
+              .add(perpendicular2.clone().multiplyScalar(Math.sin(angle) * radius));
+
+      basePos.add(widthOffset);
+
+      const syncTime = time * 0.8;
+      const flowWave1 = Math.sin(syncTime * 3 + streamProgress * 6 + i * 0.02) * 0.03;
+      const flowWave2 = Math.cos(syncTime * 2 + streamProgress * 4 + i * 0.015) * 0.02;
+
+      const flowOffset = perpendicular1.clone().multiplyScalar(flowWave1)
+              .add(perpendicular2.clone().multiplyScalar(flowWave2));
+      basePos.add(flowOffset);
+
+      const pulseOffset = streamDirection.clone().multiplyScalar(
+              Math.sin(syncTime * 4 + streamProgress * 8) * 0.015
+      );
+      basePos.add(pulseOffset);
+
+      positions[i3] = basePos.x;
+      positions[i3 + 1] = basePos.y;
+      positions[i3 + 2] = basePos.z;
+
+      let streamColor;
+      if (allColors.length > 1) {
+        streamColor = allColors[Math.floor(Math.random() * allColors.length)];
+      } else {
+        streamColor = windowData.color;
+      }
+
+      const centerDistance = radius / streamWidth;
+      const progressFade = Math.pow(1 - streamProgress * 0.7, 0.8);
+      const centerIntensity = Math.pow(1 - centerDistance, 0.6);
+      const intensity = config.streamStrength * centerIntensity * progressFade;
+
+      colors[i3] = streamColor.r * intensity * 0.9;
+      colors[i3 + 1] = streamColor.g * intensity * 0.9;
+      colors[i3 + 2] = streamColor.b * intensity * 0.9;
+
+      const baseSize = 0.7 + Math.random() * 0.3;
+      const sizeByDistance = 1 - streamProgress * 0.4;
+      const sizeByCenter = 1 - centerDistance * 0.3;
+      sizes[i] = baseSize * intensity * sizeByDistance * sizeByCenter * 1.2;
+    }
+
+    streamGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    streamGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    streamGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+    const streamMaterial = new THREE.PointsMaterial({
+      size: 0.025,
+      sizeAttenuation: true,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending
+    });
+
+    const particleStream = new THREE.Points(streamGeometry, streamMaterial);
+    streamLines.add(particleStream);
+  }
+
+  function calculateRelativePosition(otherWindow) {
+    const myCenter = {
+      x: windowData.position.x + windowData.size.width / 2,
+      y: windowData.position.y + windowData.size.height / 2
+    };
+
+    const otherCenter = {
+      x: otherWindow.position.x + otherWindow.size.width / 2,
+      y: otherWindow.position.y + otherWindow.size.height / 2
+    };
+
+    const dx = (otherCenter.x - myCenter.x) / 300;
+    const dy = (myCenter.y - otherCenter.y) / 300;
+
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    return { x: dx, y: dy, z: 0, distance: distance };
+  }
+
+  function calculateTransparentContent() {
+    const sortedWindows = Array.from(entangledWindows.entries())
+            .map(([id, data]) => ({ id, ...data }))
+            .concat([{ id: windowId, ...windowData, zIndex: getWindowZIndex() }])
+            .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+
+    const currentWindow = sortedWindows.find(w => w.id === windowId);
+    const overlappingWindows = sortedWindows.filter(w =>
+            w.id !== windowId && isWindowOverlapping(currentWindow, w)
+    );
+
+    return overlappingWindows;
+  }
+
+  function isWindowOverlapping(win1, win2) {
+    const rect1 = {
+      left: win1.position.x,
+      right: win1.position.x + win1.size.width,
+      top: win1.position.y,
+      bottom: win1.position.y + win1.size.height
+    };
+
+    const rect2 = {
+      left: win2.position.x,
+      right: win2.position.x + win2.size.width,
+      top: win2.position.y,
+      bottom: win2.position.y + win2.size.height
+    };
+
+    return !(rect1.right < rect2.left ||
+            rect2.right < rect1.left ||
+            rect1.bottom < rect2.top ||
+            rect2.bottom < rect1.top);
+  }
+
+  function renderTransparentContent() {
+    const overlappingWindows = calculateTransparentContent();
+
+    overlappingWindows.forEach(otherWindow => {
+      renderWindowContentAt(otherWindow);
+    });
+  }
+
+  function renderWindowContentAt(otherWindow) {
+    const offsetX = otherWindow.position.x - windowData.position.x;
+    const offsetY = otherWindow.position.y - windowData.position.y;
+
+    const worldOffset = screenToWorldOffset(offsetX, offsetY);
+
+    renderOrbAt(otherWindow, worldOffset);
+  }
+
+  function screenToWorldOffset(screenX, screenY) {
+    const scaleX = 12 / window.innerWidth;
+    const scaleY = 8 / window.innerHeight;
+
+    return {
+      x: screenX * scaleX,
+      y: -screenY * scaleY,
+      z: 0
+    };
+  }
+
+  function renderOrbAt(otherWindow, offset) {
+    if (!otherWindow.color) return;
+
+    const tempGeometry = new THREE.BufferGeometry();
+    const orbParticleCount = Math.floor(config.particleCount);
+    const positions = new Float32Array(orbParticleCount * 3);
+    const colors = new Float32Array(orbParticleCount * 3);
+    const sizes = new Float32Array(orbParticleCount);
+
+    const allColors = [otherWindow.color];
+    entangledWindows.forEach(window => {
+      if (window.color) {
+        allColors.push(window.color);
+      }
+    });
+
+    const nucleusParticles = Math.floor(orbParticleCount * 0.5);
+
+    for (let i = 0; i < orbParticleCount; i++) {
+      const i3 = i * 3;
+      let radius, density;
+
+      if (i < nucleusParticles) {
+        const nucleusRadius = config.sphereRadius * 0.4;
+        radius = nucleusRadius * Math.pow(Math.random(), 0.3);
+        density = 1.0;
+      } else {
+        const innerBoundary = config.sphereRadius * 0.6;
+        const outerBoundary = config.sphereRadius * 1.1;
+        radius = innerBoundary + (outerBoundary - innerBoundary) * Math.pow(Math.random(), 0.5);
+        density = 0.7;
+      }
+
+      let phi = Math.random() * Math.PI * 2;
+      let theta = Math.acos(2 * Math.random() - 1);
+
+      const x = radius * Math.sin(theta) * Math.cos(phi) + offset.x;
+      const y = radius * Math.sin(theta) * Math.sin(phi) + offset.y;
+      const z = radius * Math.cos(theta) + offset.z;
+
+      positions[i3] = x;
+      positions[i3 + 1] = y;
+      positions[i3 + 2] = z;
+
+      let particleColor;
+      if (i < nucleusParticles && allColors.length > 1) {
+        particleColor = allColors[Math.floor(Math.random() * allColors.length)];
+      } else {
+        particleColor = otherWindow.color;
+      }
+
+      const normalizedRadius = radius / (config.sphereRadius * 1.1);
+      const intensity = density * (0.5 + normalizedRadius * 0.5);
+
+      colors[i3] = particleColor.r * intensity;
+      colors[i3 + 1] = particleColor.g * intensity;
+      colors[i3 + 2] = particleColor.b * intensity;
+
+      sizes[i] = density * (0.7 + Math.random() * 0.3) * (0.9 + normalizedRadius * 0.3);
+    }
+
+    tempGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    tempGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    tempGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+    const tempMaterial = new THREE.PointsMaterial({
+      size: 0.03,
+      sizeAttenuation: true,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending
+    });
+
+    const tempOrb = new THREE.Points(tempGeometry, tempMaterial);
+    tempOrb.rotation.y = time * 0.008;
+    tempOrb.rotation.x = Math.sin(time) * 0.15;
+
+    scene.add(tempOrb);
+
+    setTimeout(() => {
+      scene.remove(tempOrb);
+      tempGeometry.dispose();
+      tempMaterial.dispose();
+    }, 50);
+  }
+
+  function setupWindowTracking() {
+    let lastUpdate = 0;
+
+    function updateWindowData() {
+      const now = Date.now();
+      if (now - lastUpdate < 50) return;
+      lastUpdate = now;
+
+      windowData.position = { x: window.screenX, y: window.screenY };
+      windowData.size = { width: window.innerWidth, height: window.innerHeight };
+    }
+
+    window.addEventListener('resize', updateWindowData);
+    window.addEventListener('move', updateWindowData);
+
+    setInterval(updateWindowData, 100);
+  }
+
+  function openNewWindow() {
+    window.open(window.location.href, '_blank',
+            'width=800,height=600,left=' + (window.screenX + 550) + ',top=' + (window.screenY + 550));
+  }
+
+  function onWindowClose() {
+    if (channel) {
+      channel.postMessage({
+        type: 'window_close',
+        data: { id: windowId }
+      });
+    }
+    globalColorAssigner.removeColor(windowId);
+  }
+
+  function onVisibilityChange() {
+    if (document.hidden) {
+      detangleWindow();
+    } else {
+      setTimeout(() => {
+        broadcastWindowData('window_announce');
+      }, 500);
+    }
+  }
+
+  function onWindowMinimize() {
+    detangleWindow();
+  }
+
+  function detangleWindow() {
+    if (channel) {
+      channel.postMessage({
+        type: 'window_detangle',
+        data: { id: windowId }
+      });
+    }
+    entangledWindows.clear();
+    updateConnectionStatus();
+  }
+
+  function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+
+    time += 0.005;
+
+    updateStreams();
+
+    renderTransparentContent();
+
+    if (particles) {
+      particles.rotation.y += 0.008;
+      particles.rotation.x = Math.sin(time) * 0.15;
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  init();
+</script>
+</body>
+</html>
