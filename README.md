@@ -34,7 +34,9 @@ python3 -m http.server 8888
 ```
 
 The launcher opens every version one click each; windows come pre-positioned side by side —
-drag them and watch the tether hold.
+drag them and watch the tether hold. **Three or more windows work too**: each extra window
+with its own iteration becomes another entity (the artwork supports up to 10 unpaired
+instances) — the 🔺 TRIO button spawns green/red + red/green + blue at once.
 
 ![Launcher + paired windows](images/02-pair-tether.png)
 

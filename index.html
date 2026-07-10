@@ -32,6 +32,7 @@
 		iteration sets the palette — full map in <a class="btn" href="versions/v0-live/ITERATION_COLORS.txt" target="_blank">ITERATION_COLORS.txt</a>.
 		video palette: iter 253 = green/red · iter 58 = red/green (scheme #43, dark bg)</div>
 		<button class="gold" onclick="pair('versions/v0-live/', ['fxchain=ETHEREUM&noshuffle=1&fxiteration=253', 'fxchain=TEZOS&noshuffle=1&fxiteration=58'])">🎬 VIDEO COLORS (green/red + red/green)</button>
+		<button class="gold" onclick="trio('versions/v0-live/', ['fxchain=ETHEREUM&noshuffle=1&fxiteration=253', 'fxchain=TEZOS&noshuffle=1&fxiteration=58', 'fxchain=ETHEREUM&noshuffle=1&fxiteration=41'])">🔺 TRIO (+ blue third entity)</button>
 		<br>
 		<label>iteration</label><input type="number" id="iter" min="1" max="256" value="253">
 		<button class="gold" onclick="pair('versions/v0-live/', ['fxchain=TEZOS&noshuffle=1&fxiteration='+iter(), 'fxchain=ETHEREUM&noshuffle=1&fxiteration='+iter()])">open PAIR (tezos + ethereum)</button>
@@ -44,6 +45,7 @@
 		<h2>v2 — recreation on Staal's engine</h2>
 		<div class="desc">gpuparticles engine + WindowManager + tether shader + trails, 1M particles</div>
 		<button onclick="pair('versions/v2-entangled-gpu/', ['clear=true',''])">open PAIR</button>
+		<button onclick="trio('versions/v2-entangled-gpu/', ['clear=true','',''])">open TRIO</button>
 		<button onclick="one('versions/v2-entangled-gpu/?clear=true')">open one (reset)</button>
 	</div>
 
@@ -80,10 +82,13 @@
 		function one (url) {
 			window.open(url, '_blank', feat((screen.width - W) / 2));
 		}
-		function pair (base, queries) {
-			const gap = 30, left0 = (screen.width - W * 2 - gap) / 2;
+		function pair (base, queries) { spawn(base, queries, W); }
+		function trio (base, queries) { spawn(base, queries, Math.min(W, (screen.width - 90) / 3)); }
+		function spawn (base, queries, w) {
+			const gap = 30, n = queries.length, left0 = (screen.width - w * n - gap * (n - 1)) / 2;
 			queries.forEach((q, i) => {
-				window.open(base + (q ? '?' + q : ''), '_blank', feat(left0 + i * (W + gap)));
+				window.open(base + (q ? '?' + q : ''), '_blank',
+					`popup=yes,width=${w},height=${H},left=${left0 + i * (w + gap)},top=${Math.max(40,(screen.height-H)/2)}`);
 			});
 		}
 	</script>
