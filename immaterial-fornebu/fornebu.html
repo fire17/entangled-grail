@@ -1,0 +1,63 @@
+<html>
+	<head>
+
+		<style type="text/css">
+			*
+			{
+				margin: 0;
+				padding: 0;
+			}
+
+			body
+			{
+				background: #000000;
+			}
+
+			iframe
+			{
+				border: none;
+				width: 100%;
+				height: 100%;
+				opacity: 0;
+				transition: opacity 1.5s ease-in-out;
+			}
+
+		</style>
+		
+		
+
+	</head>
+	<body>
+		<iframe style="opacity: 0;" id="frame"></iframe>
+
+
+		<script type="text/javascript">
+
+			let urlParams = new URLSearchParams(window.location.search);
+			let interval = urlParams.get('interval') || 3 * 60;
+			let ratio = urlParams.get('ratio') || 0.1875;
+			let scale = urlParams.get('scale') || 1;
+
+			interval = interval * 1000;
+
+			let iframe = document.getElementById('frame');
+			iframe.onload = function()
+			{
+				iframe.style.opacity = 1;
+			}
+
+			iframe.src = 'index.html?aspectRatio=' + ratio + '&scale=' + scale;
+
+			setInterval(function()
+			{
+				iframe.style.opacity = 0;
+
+				setTimeout(function()
+				{
+					iframe.contentWindow.location.reload();
+				}, 1500);
+			}, interval);
+			
+		</script>
+	</body>
+</html>

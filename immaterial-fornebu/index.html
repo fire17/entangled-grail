@@ -1,0 +1,177 @@
+<html>
+	<head>
+
+		<title>Immaterial</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+    	<meta property="og:image" content="thumbnail.png" />
+		
+		<style type="text/css">
+			body
+			{
+				margin: 0;
+				overflow: hidden;
+			}
+
+			#scene
+			{
+			    padding: 0;
+			    margin: auto;
+			    display: block;
+			    position: absolute;
+			    top: 0;
+			    bottom: 0;
+			    left: 0;
+			    right: 0;
+			}
+
+		</style>
+
+		<script type='text/javascript' src='tweakpane-3.1.8.js'></script>
+		<script type="text/javascript" src="three.r124.min.js"></script>
+		<script>
+
+			function genTokenData(projectNum) 
+			{
+			  let data = {};
+			  let hash = "0x";
+			  for (var i = 0; i < 64; i++) {
+			    hash += Math.floor(Math.random() * 16).toString(16);
+			  }
+			  data.hash = hash;
+			  data.tokenId = (
+			    projectNum * 1000000 +
+			    Math.floor(Math.random() * 1000)
+			  ).toString();
+			  return data;
+			}
+
+			let tokenData = genTokenData(123);
+
+			//tokenData.hash = "0x13e901e05356e38a9b463d2a8fe7308e9a8db9bf339bfe07d725d3f02f08aaf8";
+			//tokenData.hash = "0x4300d023593a9e72a8f19b55794dcaa6a774d2e6937ba18fc030dd5efde6c353";
+			//tokenData.hash = "0xe7fbdb7d6e1ef5d41f367db16756624c259ad8c3cc40de5bcafd39b3be4a9505";
+			//tokenData.hash = "0x8ffbde49823333372b4740e2e53c06b8d82f72f836bd2f817f19eb136c8e4c9a";
+			//tokenData.hash = "0xc1c6de01decdc7099d3a0e9488a4e99aeee2f316b537e216a17ce562ff08a421";
+			//tokenData.hash = "0xad59290a52efbac32f9867020a142f56c83a1d5e6d7123f9d23f13d044af457c";
+			//tokenData.hash = "0x5f23a8f1d96b74d6d52dcc3aeb8b2438ee21f042c6e02fe6dd69a3ee5618e0b9";
+			//tokenData.hash = "0xa943b6cea6a4b7a5adfa0f01c79a5d32f36cd39b1d22f3e002d6fcbe45b391b3";
+			//tokenData.hash = "0xe3146f8a30615a4eea2fdcd769032e98d98ff19c126c3c899003c185d7c3e7f7";
+			//tokenData.hash = "0x63a6c5f7efd27a5e5f96037e08a0a21547385eb46a916a88b1d938eb1526b8d3";
+			//tokenData.hash = "0x1edb60af94eb583e810941823f684a7e443c0e6783887519288ffc5bbf82dbe3";
+			//tokenData.hash = "0x25b1fde6516d64dfb2771b2d0b22e5108e93b7b29b0fb95f5df1924718b85983";
+			//tokenData.hash = "0xd9de7253fb603c67528a6846d67bf63b40ff020db19ba03428c61cdaf4e76dbc";
+			//tokenData.hash = "0xe54f810cd9dbc77124a51b472d86cc5cfae88036c9cae277d6a5905adef84101";
+
+			//tokenData.hash = "0xda1b1d89dc320510d95e9e20a7062375fb2b075ec9213037662ef5aa3d6bcaf9";
+
+			//tokenData.hash = "0x2295e776809e47aeb3d258a4d5ddeacd43a454bdcc1e464a6ebd80fd9c527407"; //yeah
+			//tokenData.hash = "0x7de228999677442c0367f98502e223570a9027e3ebd0b2d7d436316445a6790b"; nice one
+			//tokenData.hash = "0x1451e6a109b3779e5d76809948950e14a5d8d2e9d1eea351955fd3a455b88735";
+
+			//tokenData.hash = "0x052453c981f91e4e4843d7f6337b0242bec06e7fb8567eba5502247194be5578"; //[19, 18, 19, 18, 6];
+
+			//tokenData.hash = "0x3219fe3a616bde6745880fa9d5805aee63e01291de3a3df77ac24401174cdf78";
+
+			//tokenData.hash = "0xda1b1d89dc320510d95e9e20a7062375fb2b075ec9213037662ef5aa3d6bcaf9"; //mint #0
+
+
+			// curated ones
+			//tokenData.hash = "0xccc47817901deb20d9405e17c2ad371d6c77d1065a7d7caac38bad554b4214aa"; //nice
+			//tokenData.hash = "0xa75acf29126d934e7a789c00c3a57303ed84de891131f752d017b05d7e07af9b"; //nice closeup
+			//tokenData.hash = "0x93ad320369482b2858d2e5aebe37681d261a0e52014c73801751b4eb25df0f25";
+			//tokenData.hash = "0x8d63a34e2fa81191fc799d6c323445e5131609c5f5d56158780ace5597045e5d";
+			//tokenData.hash = "0xc75f837861c547f38ea5a6473891339d334c870a3020ed950b3d7698e398724c"; //yellow
+			//tokenData.hash = "0xb50c32973b414af5c92c91c22788de584f8d55e626b43060d5ab7ee6dcf517b6"; //very nice yellow
+			//tokenData.hash = "0xf68b9f5607b8b5ae3e0433534bcda654bcb87d5f52d14fcd9a2f25fabe0575f4"; //white pink
+			//tokenData.hash = "0xb3661c686a0e87df361a98d524718b5a85faaa0628638ce0340752b8cfb92078"; //haze
+			//tokenData.hash = "0x9fcff7280d564850560ec5824db52325dfe8696ad3f4781ba43243afb44136df"; //blue beige
+			//tokenData.hash = "0x1e167dbaf3b883826a772a410e5ca7a7be959c924e8a9f676228f5651bf8c350"; //red
+			//tokenData.hash = "0x266b2c79868b7c5a67f6be85a37e1eb3a94735906ea1538785769a0e1693a55e"; //amazing pink and red
+			//tokenData.hash = "0xcef4c69501dfefafca3367e8b6b790f1a2479c01ef7547dcf301ded3b9d94e2f"; //very bright pink
+			//tokenData.hash = "0x0bcde2fd484c8c6d55b6518130ef3c897c59163772dbed1001a890969ce1c62b"; //fun double sided pink
+			//tokenData.hash = "0x2d7e4791788e1d19dd7d8dd209748dbfa923f9e2c6a5dc92047e3214ff125000"; //fun double sided blue
+			//tokenData.hash = "0x8d0c38c36473ee7e82e621bed883b4e4620f337ae81c5ec9d5ac6d1cf4b939fe"; //that nice yellow and white scheme
+			//tokenData.hash = "0xcb50494c14bcd3586f4db6cb53b52b649241a456c5b710d8cd9a0194cf266f68"; //pink yellow white closeup
+			//tokenData.hash = "0x7f4f72fbf80fccd6aa13896dcc5b62e88c2aba7b2583425c7f0eb67052573336"; //simple pink
+			//tokenData.hash = "0x57ae19f9a0390d156842acc8dbc6606c65e72cc10d770501604be7e88baf1b01"; //simple pink
+			//tokenData.hash = "0x213cc6931a3682811d254c231afa49b13d2cf62baf9685a8db2c9ef00d278809"; // beutiful darker pink simple
+			//tokenData.hash = "0xb1240f472e30352e1dc9dfa6a5f38f443e73f06559300c04a0ddfae69ace1bb4"; //cool green and white with frame
+			//tokenData.hash = "0xd7c2ea6bf560eded7a832689305a09cb6ad27f44d0d55cb6c89f9fddd189d7ff"; //detailed white and black
+			//tokenData.hash = "0xe5c28cc802b640faea67fd26c6ccee4b2f29e215e030666102272ed52a99fa1d"; // very nice red and white
+			//tokenData.hash = "0xf28a7a88dc82673645d65f92bbd495238dd7a2c454962c4bfda6d7005f64b346"; // nice beige with a splash of yellow frame
+			//tokenData.hash = "0x2bc0f50259d9068662aebdfa006bf25442cc30bcd90a8a54322ef5d35c5a65ce"; // dark red and light pink
+			//tokenData.hash = "0xb7babec86dd667d8a4e1fce1facf62e8d46507a659b196ea612f3356aeeb720b"; // beautiful dense red!
+			//tokenData.hash = "0x12febd66b2960f07736016647ccd4ea55f8037d476a54794febd9f72993fe190"; // balanced grey closeup
+
+			//tokenData.hash = "0xd332f32f065826a88e76f7f13517935d3022b32a0c5f900abc248954dc99fd80"; [9, 19, 11] //green and dark red damn!
+
+
+			//tokenData.hash = "0xe078e544fb4ba731692b068befffb3351ae14327462c4cda0fd384e9312e6217"; // i video
+			//tokenData.hash = "0xa6921a30cd171ab05a5862f8bf59d39caaaeaca67e3f2c4f68dde153ef0470d2"; // i video
+
+			//tokenData.hash = "0x4d82c3aed9165dd4b198e13649337de2fcd057ece209430c2b90083fb2445d3e"; //beige gold
+			//tokenData.hash = "0x7eb23fae80f91f70656204832b743875b7a82d0a4903ec59ee344aa222001e2a";
+
+
+			//FAKEWHALE
+			//tokenData.hash = "0x6b8119798867ce5a2a15d475142b8575ca7584767f478ae561129bbaa3ed14ed";
+			//tokenData.hash = "0xa84c34bda9a2e08642539d72217fb06e91bc183fd5368b9aa3c81bd93f3cde61";
+			//tokenData.hash = "0xb75b9d99f41ccf45376c8b2017dad269da172a9bc9ee9530adb3e769b1f07e60";
+			//tokenData.hash = "0xe3979943089b61e2f42b04521e1d1a1a2e4c3f7175f4952ee793fa54b65cea1c";
+			//tokenData.hash = "0xe5422c2397d90769bc17c24a748162bd92cecec5dde3677ca5e0ed8d86cdedb3";
+			//tokenData.hash = "0x504378600686e7321b252b9ab504b42569bb6d0f13907a0f9c218082c183d20e";
+			//tokenData.hash = "0xfbfb38b04f0259f58275af8387de3538309f208d12d7c1f7b6b6afa1d3882d39";
+			//tokenData.hash = "0x539dd6bbb4ea1d539701333b1f84b6011bdd92ce1c50e7dd85e9910d1b071a98";
+			//tokenData.hash = "0x776961e1cc0301095d9b2d6275211060efd2d655a91532b783fa000df6df7695"; 
+
+			//tokenData.hash = "0x0119a39cdf1d7df907f546bccd25ffd1d143c445b73f872bf2974b66def09b05";
+
+
+			//tokenData.hash = "0x358ed317f643ea18215991ead43736d5934fc725742ebf867682d542213a88eb"; //nice greeen one
+
+			
+		</script>
+
+
+
+		<script type="module">
+			import {hashes} from './goerli-hashes.js';
+
+			let params = (new URL(document.location)).searchParams;
+			let hash = params.get("hash");
+
+			if (hash) tokenData.hash = hash;
+			let index = 0;
+
+			if (hash)
+			{
+				let i = hashes.indexOf(hash);
+				if (i != -1) index = i;
+			}
+
+			console.log("index:" + index);
+
+			document.addEventListener('keydown', (e) =>
+			{
+				if (e.code == "ArrowUp")
+				{
+					index--;
+					window.location = "?hash=" + hashes[index];
+				}
+				else if (e.code == "ArrowDown")
+				{
+					index++;
+					window.location = "?hash=" + hashes[index];
+				}
+
+				//console.log("keydown", e.code);
+			});
+
+			//console.log(hashes);
+
+		</script>
+	</head>
+	<body>
+		<script type="module" src="bundle.min.js"></script>
+	</body>
+</html>

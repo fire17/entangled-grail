@@ -1,0 +1,9 @@
+node_modules
+screengrabs
+build
+deploy
+screens*
+npm-debug.log
+*.png
+.env
+.DS_Store

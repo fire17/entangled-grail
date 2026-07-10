@@ -1,3 +1,8 @@
+## unreleased — 2026-07-10 (local only)
+- immaterial-fornebu: README + captured media (stills/GIF/montage/clips), goerli-hashes + tweakpane stubs (fixes silent `?hash=` breakage).
+- immaterial-renders/ranking-batch-001: 10 seeded clips for ranking (local-only, 160MB).
+- New /immaterial-art skill: batch/generate/similar/identify/features render pipeline with seed provenance.
+
 # Changelog
 
 ## v0.1.2 — 2026-07-10
