@@ -70,3 +70,11 @@ Controller now: ◀ ▶ / arrow keys = full exact switch (reload-step, identical
 ▶/⏸ + dwell slider (2-30s) = autoplay, persists across reloads (sessionStorage, per window);
 [ ] keys = palette-only live preview (label shows N*). Full feature inventory in commit msg +
 the bundle itself logs "DETAILED FEATURES" JSON to console every load.
+
+### 2026-07-10 — the 2-entity limit (user-discovered, code-confirmed)
+Staal's bundle supports exactly TWO first-class particle entities (instanceShape[2],
+colors0/colors1, instanceIndex 0|1 = one pair per iteration). Any additional window renders
+the shared world + a radial COLOR WASH (unpairedColors[10]) — a ghost presence, not a particle
+orb. True 3rd entity in the original = minified-sim surgery (3-way particle partition +
+compositor arrays + pairing) — open mission. v2 does N real entities natively (verified:
+3 windows = orb with two arms; test-seed3.html is the headless harness).
