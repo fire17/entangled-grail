@@ -64,29 +64,34 @@
 		label.textContent = liveIter + '*'; // * = skin preview, not the true iteration
 	}
 
-	// --- auto-trio: leader window spawns its two siblings ---
+	// --- auto-trio: leader window spawns its two siblings, then VERIFIES they connected ---
 	if (params.get('auto') === 'trio' && !params.get('spawned')) {
 		const sibs = ['fxchain=TEZOS&fxiteration=58', 'fxchain=ETHEREUM&fxiteration=41'];
+		const connected = () => { try { return (JSON.parse(localStorage.getItem('windows')) || []).length; } catch (e) { return 1; } };
+		const spawned = [];
 		const spawnSibs = () => {
 			const w = window.innerWidth, h = window.innerHeight, y = window.screenY;
-			let ok = true;
 			sibs.forEach((q, i) => {
 				const x = window.screenX + (i === 0 ? -(w + 25) : (w + 25));
-				const win = window.open('./?' + q + '&noshuffle=1&spawned=1', '_blank',
+				const win = window.open('./?' + q + '&noshuffle=1&spawned=1', 'sib' + i,
 					`popup=yes,width=${w},height=${h},left=${Math.max(0, x)},top=${y}`);
-				if (!win) ok = false;
+				if (win) spawned.push(win);
 			});
-			return ok;
 		};
+		const o = document.createElement('div');
+		o.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;' +
+			'z-index:10000;color:#fff;font:16px "Courier New",monospace;background:rgba(0,0,0,.55);cursor:pointer;text-align:center;padding:30px;line-height:1.7';
+		o.onclick = () => { spawnSibs(); o.style.display = 'none'; setTimeout(() => { o.style.display = 'flex'; }, 2500); };
 		window.addEventListener('DOMContentLoaded', () => {
-			if (spawnSibs()) return;
-			// popup-blocked: one gesture summons both
-			const o = document.createElement('div');
-			o.textContent = '🖱 click anywhere to summon the 2 sibling windows (allow popups on localhost for full automagic)';
-			o.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;' +
-				'z-index:10000;color:#fff;font:16px "Courier New",monospace;background:rgba(0,0,0,.55);cursor:pointer;text-align:center;padding:20px';
-			o.onclick = () => { spawnSibs(); o.remove(); };
-			document.body.appendChild(o);
+			spawnSibs();
+			setInterval(() => {
+				const n = connected();
+				if (n >= 3) { o.remove(); return; }
+				o.innerHTML = n < 2
+					? '🖱 <b>click anywhere to summon the 2 sibling windows</b><br><span style="font-size:13px;color:#bbb">for full automagic: allow pop-ups for this site<br>(Arc/Chrome: blocked-popup icon in the address bar → Always allow)</span>'
+					: '⚠️ ' + n + '/3 connected — siblings may have opened as <b>tabs</b><br><span style="font-size:13px;color:#bbb">drag each new tab out into its own window (the effect needs separate windows),<br>or allow pop-ups for this site, then click here to re-summon.</span>';
+				if (!o.parentNode && document.body && o.style.display !== 'none') document.body.appendChild(o);
+			}, 800);
 		});
 	}
 
