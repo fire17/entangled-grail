@@ -11,7 +11,7 @@ onchfs (an on-chain filesystem).
 I extracted the production generator from the chain, mapped all 256 editions' palettes by
 replicating its WASM RNG offline (it's hash-independent — iteration number is the complete
 style DNA: palette, curl params, Gray-Scott reaction-diffusion, geometry), found the exact
-two editions from the viral video (253 + 258), and built a launcher + live iteration cycler
+two editions from the viral video (253 + 58), and built a launcher + live iteration cycler
 around it. Also includes a from-scratch recreation on Staal's own open gpuparticles engine.
 
 All artwork code © Bjørn Staal (provenance in NOTICE.md — happy to take down/re-license on
